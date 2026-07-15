@@ -90,7 +90,7 @@
     (println "[5] Flag facility safety concern")
     (let [result (scenario-5-safety-concern s)]
       (println "  Action:" (:action result))
-      (println "  Escalated (safety always escalates):" (= :escalate (:action result)))
+      (println "  Escalated (safety always escalates):" (= :escalated (:action result)))
       (println))
 
     (println "╔════════════════════════════════════════════════════════════╗")

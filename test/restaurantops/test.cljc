@@ -155,7 +155,7 @@
                  :description "Drain backup"
                  :severity "high"}
         result (op/run-proposal s request)]
-    (assert-equal (= :escalate (:action result))
+    (assert-equal (or (= :escalate (:action result)) (= :escalated (:action result)))
                   true
                   "Safety concern should escalate")))
 

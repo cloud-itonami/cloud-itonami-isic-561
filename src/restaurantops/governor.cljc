@@ -21,32 +21,35 @@
 ;; ---------------------- hard checks ----------------------
 
 (defn reservation-unverified-violations
-  "Check 1: Reservation must be registered AND verified.
+  "Check 1: Reservation must be registered AND verified (for reservation-specific ops).
   This is re-derived from the store, never from proposal self-report.
 
-  Exception: :flag-safety-concern doesn't require reservation verification
-  (it's a facility-level concern that escalates to human review)."
+  Exception: Facility-level ops (:coordinate-supply-request, :schedule-staff-shift-proposal,
+  :flag-safety-concern) don't require reservation verification."
   [s op-id reservation-id]
-  ;; Safety concerns don't need reservation verification (facility-level)
-  (if (= op-id :flag-safety-concern)
+  ;; Facility-level ops don't need reservation verification
+  (if (#{:coordinate-supply-request :schedule-staff-shift-proposal :flag-safety-concern} op-id)
     []
-    ;; All other operations require reservation verification
-    (let [res (store/reservation s reservation-id)]
-      (cond
-        (nil? res)
-        [{:check/id :reservation-unverified
-          :violation "Reservation not found in store"}]
+    ;; Reservation-specific operations require reservation verification
+    (if (nil? reservation-id)
+      [{:check/id :reservation-unverified
+        :violation "Reservation ID required but not provided"}]
+      (let [res (store/reservation s reservation-id)]
+        (cond
+          (nil? res)
+          [{:check/id :reservation-unverified
+            :violation "Reservation not found in store"}]
 
-        (not (:registered? res))
-        [{:check/id :reservation-unverified
-          :violation "Reservation is not registered"}]
+          (not (:registered? res))
+          [{:check/id :reservation-unverified
+            :violation "Reservation is not registered"}]
 
-        (not (:verified? res))
-        [{:check/id :reservation-unverified
-          :violation "Reservation is not verified"}]
+          (not (:verified? res))
+          [{:check/id :reservation-unverified
+            :violation "Reservation is not verified"}]
 
-        :else
-        []))))
+          :else
+          [])))))
 
 (defn effect-not-propose-violations
   "Check 2: Effect must be :propose. Any other effect is rejected outright."
