@@ -1,0 +1,44 @@
+{:name "cloud-itonami-isic-561"
+ :description "Restaurant & mobile food service operations coordination actor"
+ :isic-code "561"
+ :isic-title "Restaurants and mobile food service activities"
+ :business-id "cloud-itonami-isic-561"
+ :repo "https://github.com/cloud-itonami/cloud-itonami-isic-561"
+ :org "cloud-itonami"
+ :license "AGPL-3.0"
+ :maintainer "Jun Kawasaki (jun784@gmail.com)"
+ :modules
+ {:store "restaurantops.store"
+  :advisor "restaurantops.advisor"
+  :governor "restaurantops.governor"
+  :operation "restaurantops.operation"
+  :phase "restaurantops.phase"
+  :sim "restaurantops.sim"}
+ :scope
+ {:in-scope
+  [{:operation :schedule-reservation
+    :description "Table/reservation scheduling logistics"}
+   {:operation :coordinate-order-status-update
+    :description "Administrative order-queue status tracking"}
+   {:operation :coordinate-supply-request
+    :description "Non-food consumables (napkins, cleaning, utensils)"}
+   {:operation :schedule-staff-shift-proposal
+    :description "Administrative shift proposal (not binding)"}
+   {:operation :flag-safety-concern
+    :description "Facility/sanitation/safety escalation to human review"}]
+  :out-of-scope
+  [{:excluded "Food-safety determinations"}
+   {:excluded "Health-inspection compliance decisions"}
+   {:excluded "Recipe/menu-content changes"}
+   {:excluded "Food-handling technique decisions"}
+   {:excluded "Safety-authority overrides"}]}
+ :governor
+ {:hard-checks 3
+  :check-1 "Reservation-record unverified (must be registered AND verified)"
+  :check-2 "Effect not :propose (rejected outright)"
+  :check-3 "Scope exclusion (food-safety, recipe, technique, safety-override blocked)"}
+ :rollout-phases
+ {:phase-0 "Read-only (all proposals held for human review)"
+  :phase-1 "Auto-commit reservation + order status"
+  :phase-2 "Auto-commit + supply coordination + staff shifts"
+  :phase-3 "All non-safety auto-commit; safety always escalates"}}
