@@ -1,2 +1,9 @@
 {:paths ["src" "test"]
- :deps {}}
+ :deps {}
+ :aliases
+ ;; This repo had no :aliases at all, so nothing could lint it -- which is why
+ ;; a false-green test verdict sat here unnoticed. Fleet-standard :lint shape.
+ {:lint {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
+         :main-opts    ["-m" "clj-kondo.main"
+                        "--lint" "src" "test"
+                        "--fail-level" "error"]}}}

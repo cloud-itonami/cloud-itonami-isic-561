@@ -231,6 +231,16 @@
             icon (if (= :pass (:status result)) "✓" "✗")]
         (println (str "[" (inc i) "] " (:name result) " " icon))))
     (println)
-    (println (str "All tests passed! (" (count passed) "/" (count results) ")")))
+    ;; The message used to be printed unconditionally, so a run with failures
+    ;; still announced success. It now follows the actual verdict.
+    (println (str (if (empty? failed) "All tests passed!" "TESTS FAILED")
+                  " (" (count passed) "/" (count results) ")")))
 
-  (empty? @test-results))
+  ;; The verdict used to be `(empty? @test-results)`, which is inverted: it is
+  ;; true only when NO test ran, and false for a fully-passing run. A suite
+  ;; that reports failure when everything passes -- and success when nothing
+  ;; executed -- cannot gate anything. Correct verdict: results exist and none
+  ;; of them failed.
+  (let [results @test-results]
+    (and (seq results)
+         (every? #(= :pass (:status %)) results))))
