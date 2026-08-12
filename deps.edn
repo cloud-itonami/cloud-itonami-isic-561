@@ -1,9 +1,27 @@
 {:paths ["src" "test"]
- :deps {}
+ ;; The actor itself is dependency-free (portable .cljc, runs under JVM and
+ ;; nbb). The only dependency is this workspace's base design system, used at
+ ;; BUILD time by `restaurantops.render-html` to style the generated operator
+ ;; console. It is a :git/sha dep (not :local/root) so this repo stays
+ ;; forkable outside the monorepo checkout.
+ :deps {io.github.kotoba-lang/jp-go-digital-design-system
+        {:git/url "https://github.com/kotoba-lang/jp-go-digital-design-system"
+         :git/sha "83db99546eabc53613ae826ea41d1533a3c574af"}}
  :aliases
  ;; This repo had no :aliases at all, so nothing could lint it -- which is why
  ;; a false-green test verdict sat here unnoticed. Fleet-standard :lint shape.
- {:lint {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
+ {;; Fleet-uniform invocation is `clojure -M:dev:<alias>`. Unlike the sibling
+  ;; cloud-itonami repos, this one has no :local/root deps to override, so
+  ;; :dev has nothing to pin -- it exists so the standard command line works
+  ;; here too rather than warning about an undeclared alias.
+  :dev {}
+  ;; clojure -M:dev:render-html [out-file]
+  ;; -> regenerate docs/samples/operator-console.html by executing the REAL
+  ;;    actor (store -> advisor -> governor -> operation/run-proposal) and
+  ;;    rendering its actual output. Refuses to write if the run produced no
+  ;;    governor hold. Flagship checklist item 2.
+  :render-html {:main-opts ["-m" "restaurantops.render-html"]}
+  :lint {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
          :main-opts    ["-m" "clj-kondo.main"
                         "--lint" "src" "test"
                         "--fail-level" "error"]}}}
