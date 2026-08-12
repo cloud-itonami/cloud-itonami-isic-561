@@ -18,6 +18,70 @@
   (:require [restaurantops.store :as store]
             [clojure.string :as str]))
 
+;; ---------------------- rule constants ----------------------
+;;
+;; `allowed-ops`, `facility-level-ops` and `forbidden-patterns` used to be
+;; `let`-bound inside the check functions, so nothing outside this namespace
+;; could read the actual allowlist -- any consumer (docs, the operator console
+;; generator, a conformance test) had to re-type it as prose and could silently
+;; drift from the enforced rule. Hoisting them to vars is behaviour-identical:
+;; the checks below read exactly these values.
+
+(def facility-level-ops
+  "Ops that act on the facility, not on a specific reservation, and therefore
+  skip the reservation-verification check."
+  #{:coordinate-supply-request :schedule-staff-shift-proposal :flag-safety-concern})
+
+(def allowed-ops
+  "Closed allowlist. Anything not in here is permanently blocked by check 3."
+  #{:schedule-reservation
+    :coordinate-order-status-update
+    :coordinate-supply-request
+    :schedule-staff-shift-proposal
+    :flag-safety-concern})
+
+(def forbidden-patterns
+  "Excluded-territory scan (EN + JA) applied to the whole serialised proposal.
+  `:flag-safety-concern` is exempt so a legitimate safety escalation is not
+  self-blocked by the word 'safety'."
+  [;; EN patterns for food-safety / health-inspection / recipe / technique territory
+   #"(?i)food.*safety"
+   #"(?i)health.*inspection"
+   #"(?i)health.*code"
+   #"(?i)health.*department"
+   #"(?i)sanitation.*certification"
+   #"(?i)sanitation.*inspection"
+   #"(?i)health.*authority"
+   #"(?i)safety.*authority"
+   #"(?i)compliance.*override"
+   #"(?i)menu.*decision"
+   #"(?i)menu.*design"
+   #"(?i)recipe.*change"
+   #"(?i)food.*handling"
+   #"(?i)cooking.*technique"
+   #"(?i)food.*preparation"
+   #"(?i)ingredient.*selection"
+   #"(?i)kitchen.*protocol"
+   #"(?i)food.*quality"
+   #"(?i)allergen.*determination"
+   #"(?i)nutritional.*standard"
+   ;; JA patterns
+   #"食品安全"
+   #"健康.?検査"
+   #"健康.?基準"
+   #"衛生.?認可"
+   #"衛生.?監督"
+   #"保健.?監督"
+   #"メニュー"
+   #"レシピ"
+   #"調理法"
+   #"食品.?扱い"
+   #"食材.?選択"
+   #"厨房.?規約"
+   #"食品.?品質"
+   #"アレルゲン"
+   #"栄養.?基準"])
+
 ;; ---------------------- hard checks ----------------------
 
 (defn reservation-unverified-violations
@@ -28,7 +92,7 @@
   :flag-safety-concern) don't require reservation verification."
   [s op-id reservation-id]
   ;; Facility-level ops don't need reservation verification
-  (if (#{:coordinate-supply-request :schedule-staff-shift-proposal :flag-safety-concern} op-id)
+  (if (facility-level-ops op-id)
     []
     ;; Reservation-specific operations require reservation verification
     (if (nil? reservation-id)
@@ -78,53 +142,7 @@
   Uses qualified substring scan (EN+JA) so legitimate :flag-safety-concern
   ops that mention 'safety' aren't self-blocked."
   [proposal]
-  (let [forbidden-patterns
-        [;; EN patterns for food-safety / health-inspection / recipe / technique territory
-         #"(?i)food.*safety"
-         #"(?i)health.*inspection"
-         #"(?i)health.*code"
-         #"(?i)health.*department"
-         #"(?i)sanitation.*certification"
-         #"(?i)sanitation.*inspection"
-         #"(?i)health.*authority"
-         #"(?i)safety.*authority"
-         #"(?i)compliance.*override"
-         #"(?i)menu.*decision"
-         #"(?i)menu.*design"
-         #"(?i)recipe.*change"
-         #"(?i)food.*handling"
-         #"(?i)cooking.*technique"
-         #"(?i)food.*preparation"
-         #"(?i)ingredient.*selection"
-         #"(?i)kitchen.*protocol"
-         #"(?i)food.*quality"
-         #"(?i)allergen.*determination"
-         #"(?i)nutritional.*standard"
-         ;; JA patterns
-         #"食品安全"
-         #"健康.?検査"
-         #"健康.?基準"
-         #"衛生.?認可"
-         #"衛生.?監督"
-         #"保健.?監督"
-         #"メニュー"
-         #"レシピ"
-         #"調理法"
-         #"食品.?扱い"
-         #"食材.?選択"
-         #"厨房.?規約"
-         #"食品.?品質"
-         #"アレルゲン"
-         #"栄養.?基準"]
-
-        ;; Allowed operations
-        allowed-ops #{:schedule-reservation
-                      :coordinate-order-status-update
-                      :coordinate-supply-request
-                      :schedule-staff-shift-proposal
-                      :flag-safety-concern}
-
-        op-id (:operation proposal)
+  (let [op-id (:operation proposal)
         proposal-str (str proposal)
 
         ;; Check 1: Operation must be in allowed list
