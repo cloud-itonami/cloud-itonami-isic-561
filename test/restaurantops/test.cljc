@@ -5,7 +5,8 @@
   (:require [restaurantops.store :as store]
             [restaurantops.governor :as governor]
             [restaurantops.operation :as op]
-            [restaurantops.phase :as phase]))
+            [restaurantops.phase :as phase]
+            [restaurantops.yotei-intake :as intake]))
 
 ;; ======================== Test Utilities ========================
 
@@ -188,6 +189,76 @@
 
 ;; ======================== Test Runner ========================
 
+
+;; ==================== yotei intake tests ====================
+;;
+;; The seam between the telephone and this actor. Before it, a reservation could
+;; only be coordinated if `demo-data` had invented one, so nothing a caller did
+;; ever reached the governor.
+
+(def ^:private confirmed-yoyaku
+  {"state" "confirmed" "status" "confirmed"
+   "yoyakuId" "y-1"
+   "calendarDid" "did:web:app.itonami.cloud:calendar:torikai#table:t4"
+   "startEpochMin" 29631000                ; 2026-08-20 19:00 JST, as UTC minutes
+   "durationMin" 90
+   "partySize" 4
+   "confirmedSig" "sig:y-1"
+   "confirmedVia" "delegate"
+   "consentKind" "telephone-attested"
+   "authorizedBy" "yotei/uketsuke/v1\ndelegate=..."})
+
+(defn test-intake-accepts-a-confirmed-yoyaku
+  []
+  (let [r (intake/record confirmed-yoyaku {:tz-offset-min 540})]
+    (assert-equal (:reservation-id r) "y-1" "reservation id is the 予約 id")
+    (assert-equal (:table-number r) "t4" "table comes out of the calendar DID")
+    (assert-equal (:party-size r) 4 "party size carried")
+    (assert-true (:registered? r) "a confirmed 予約 is registered")
+    (assert-true (:verified? r) "a confirmed 予約 is verified")))
+
+(defn test-intake-refuses-a-proposal
+  []
+  (assert-equal (:refused (intake/record (assoc confirmed-yoyaku "state" "proposed") {}))
+                :not-confirmed
+                "a proposed 予約 is a request, not a reservation"))
+
+(defn test-intake-refuses-a-confirmation-with-no-signature
+  []
+  (assert-equal (:refused (intake/record (dissoc confirmed-yoyaku "confirmedSig") {}))
+                :no-confirming-signature
+                "verified? must not be settable by saying 'confirmed'"))
+
+(defn test-intake-refuses-a-calendar-that-is-not-a-table
+  []
+  (assert-equal (:refused (intake/record (assoc confirmed-yoyaku "calendarDid"
+                                                "did:web:app.itonami.cloud:calendar:alice") {}))
+                :not-a-table-calendar
+                "a person's calendar is not a table"))
+
+(defn test-intake-records-how-far-the-consent-goes
+  []
+  (let [r (intake/record confirmed-yoyaku {:tz-offset-min 540})]
+    (assert-equal (:yotei/confirmed-via r) "delegate" "unattended confirm is recorded as such")
+    (assert-equal (:yotei/consent-kind r) "telephone-attested"
+                  "an attested consent must not read as a signed one downstream")))
+
+(defn test-intake-lets-the-governor-pass-a-telephone-reservation
+  []
+  (let [admitted (intake/admit {} confirmed-yoyaku {:tz-offset-min 540})
+        s (store/make-store (assoc (store/demo-data) :reservations (:reservations admitted)))]
+    (assert-equal (governor/reservation-unverified-violations s :schedule-reservation "y-1")
+                  []
+                  "a confirmed telephone 予約 is coordinatable")))
+
+(defn test-intake-leaves-the-governor-refusing-an-unconfirmed-one
+  []
+  (let [refused (intake/admit {} (assoc confirmed-yoyaku "state" "proposed") {})
+        s (store/make-store (assoc (store/demo-data) :reservations {}))]
+    (assert-true (:refused refused) "nothing was admitted")
+    (assert-true (seq (governor/reservation-unverified-violations s :schedule-reservation "y-1"))
+                 "and the governor still refuses to coordinate it")))
+
 (defn run-tests
   "Run all tests and report results."
   []
@@ -206,6 +277,15 @@
   (test "Governor: scope exclusion (recipe)" test-governor-scope-exclusion-recipe)
   (test "Governor: flag-safety-concern allowed" test-governor-safety-escalation)
   (test "Governor: full governor decision (pass)" test-governor-happy-path)
+
+  ;; yotei intake tests
+  (test "Intake: accepts a confirmed 予約" test-intake-accepts-a-confirmed-yoyaku)
+  (test "Intake: refuses a proposal" test-intake-refuses-a-proposal)
+  (test "Intake: refuses a confirmation with no signature" test-intake-refuses-a-confirmation-with-no-signature)
+  (test "Intake: refuses a calendar that is not a table" test-intake-refuses-a-calendar-that-is-not-a-table)
+  (test "Intake: records how far the consent goes" test-intake-records-how-far-the-consent-goes)
+  (test "Intake: governor passes a telephone reservation" test-intake-lets-the-governor-pass-a-telephone-reservation)
+  (test "Intake: governor still refuses an unconfirmed one" test-intake-leaves-the-governor-refusing-an-unconfirmed-one)
 
   ;; Operation tests
   (test "Operation: appointment proposal (happy path)" test-operation-reservation-proposal)
