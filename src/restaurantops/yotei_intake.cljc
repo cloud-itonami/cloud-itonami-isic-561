@@ -25,7 +25,7 @@
   makes no decision yotei makes: it does not choose a table, permit a time or
   confirm anything. Reading two fields is not a second implementation, and a
   dependency for it would pull a Worker's toolchain into a dependency-free actor."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (def ^:private table-fragment "#table:")
 
