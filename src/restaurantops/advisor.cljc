@@ -3,7 +3,7 @@
 
   This is a deterministic demo advisor. Production would use LLM-based scoring.
   Returns proposals with :effect :propose and confidence levels."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (defn advise-reservation-proposal
   "Generate a proposal for table/reservation scheduling."

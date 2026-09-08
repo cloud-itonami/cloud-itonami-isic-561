@@ -16,7 +16,7 @@
      - :schedule-staff-shift-proposal — admin shift proposal only
      - :flag-safety-concern — facility/sanitation/safety escalation only"
   (:require [restaurantops.store :as store]
-            [clojure.string :as str]))
+            [kotoba.lang.text :as str]))
 
 ;; ---------------------- rule constants ----------------------
 ;;
