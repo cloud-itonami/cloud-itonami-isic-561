@@ -13,13 +13,13 @@ Thank you for your interest in contributing to the ISIC-561 restaurant operation
 ## Running Tests
 
 ```bash
-nbb run-tests.cljs
+nbb run-tests.cljk
 ```
 
 ## Running Demo
 
 ```bash
-nbb run-demo.cljs
+nbb run-demo.cljk
 ```
 
 ## Code Style
