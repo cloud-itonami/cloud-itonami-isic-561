@@ -57,7 +57,7 @@ These are enforced by the Governor's three HARD, permanent, un-overridable check
 ### Tests
 
 ```bash
-nbb run-tests.cljk
+kbb --backend sci run-tests.cljk
 ```
 
 All tests pass. Store, Governor, Operations, and Phase tests included.
@@ -65,7 +65,7 @@ All tests pass. Store, Governor, Operations, and Phase tests included.
 ### Demo
 
 ```bash
-nbb run-demo.cljk
+kbb --backend sci run-demo.cljk
 ```
 
 5 scenarios run to completion:
