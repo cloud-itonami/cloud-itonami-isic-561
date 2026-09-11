@@ -15,12 +15,12 @@
  :aliases
  ;; This repo had no :aliases at all, so nothing could lint it -- which is why
  ;; a false-green test verdict sat here unnoticed. Fleet-standard :lint shape.
- {;; Fleet-uniform invocation is `clojure -M:dev:<alias>`. Unlike the sibling
+ {;; Fleet-uniform invocation is `kbb -M:dev:<alias>`. Unlike the sibling
   ;; cloud-itonami repos, this one has no :local/root deps to override, so
   ;; :dev has nothing to pin -- it exists so the standard command line works
   ;; here too rather than warning about an undeclared alias.
   :dev {}
-  ;; clojure -M:dev:render-html [out-file]
+  ;; kbb -M:dev:render-html [out-file]
   ;; -> regenerate docs/samples/operator-console.html by executing the REAL
   ;;    actor (store -> advisor -> governor -> operation/run-proposal) and
   ;;    rendering its actual output. Refuses to write if the run produced no
